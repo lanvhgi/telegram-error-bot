@@ -1,13 +1,12 @@
-import logging
+""import logging
 import os
 import json
 from functools import lru_cache
 from flask import Flask, request
-from telegram import Bot, Update
+from telegram import Bot, Update, InputFile
 from telegram.ext import Dispatcher, CommandHandler, MessageHandler, Filters
 from googleapiclient.discovery import build
 from google.oauth2 import service_account
-from telegram import InputFile
 
 # Thiết lập logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -84,17 +83,24 @@ def help_command(update, context):
         "🔢 Mã lỗi thường là một dãy số như <code>1907</code>, <code>2004</code>, v.v.\n\n"
         "📌 Gửi mã lỗi đó vào đây để bot trả về mô tả và cách xử lý.\n\n"
         "📎 Ví dụ vị trí mã lỗi:\n<b>additionalFaultID=1907</b> (nằm trong phần Nội dung cảnh báo)\n\n"
-        "🖼 Xem ảnh minh họa bên dưới để dễ hình dung hơn."
+        "🖼 Xem ảnh minh họa bên dưới để dễ hình dung hơn.\n\n"
+        "✅ Lệnh hỗ trợ: <code>/start</code>, <code>/help</code>, <code>/list</code>, <code>/refresh</code>"
     )
-
     update.message.reply_text(help_text, parse_mode='HTML')
-
-    # Gửi ảnh minh họa (ảnh nằm trong cùng thư mục với mã)
     try:
         with open("guide_image.png", "rb") as img:
             update.message.reply_photo(photo=InputFile(img))
     except FileNotFoundError:
         update.message.reply_text("⚠️ Không tìm thấy ảnh hướng dẫn. Vui lòng kiểm tra file guide_image.png.")
+
+def list_command(update, context):
+    error_codes = get_error_codes_from_sheets()
+    if not error_codes:
+        update.message.reply_text("⚠️ Chưa có mã lỗi nào được tải từ Google Sheets.")
+        return
+    message = "📋 <b>Danh sách mã lỗi đang hỗ trợ:</b>\n\n"
+    message += "\n".join(f"• <code>{code}</code>" for code in sorted(error_codes.keys()))
+    update.message.reply_text(message, parse_mode='HTML')
 
 def refresh_cache(update, context):
     try:
@@ -108,10 +114,8 @@ def refresh_cache(update, context):
 def handle_message(update, context):
     user_input = update.message.text.strip()
     chat = update.effective_chat
-
     logger.info(f"Người dùng gửi: {user_input}")
     logger.info(f"Chat ID: {chat.id} | Loại: {chat.type} | Tên: {chat.title}")
-
     error_codes = get_error_codes_from_sheets()
     if user_input in error_codes:
         info = error_codes[user_input]
@@ -122,14 +126,24 @@ def handle_message(update, context):
             f"🛠 <b>Cách xử lý:</b>\n{info['solution']}"
         )
     else:
-        reply = f"❌ Không tìm thấy thông tin cho mã lỗi <b>{user_input}</b>.\nVui lòng thử lại mã khác."
-
+        reply = (
+            f"❌ Không tìm thấy thông tin cho mã lỗi <b>{user_input}</b>.\n"
+            "Vui lòng kiểm tra lại hoặc dùng lệnh /list để xem danh sách mã lỗi."
+        )
     update.message.reply_text(reply, parse_mode='HTML')
+
+def unknown_command(update, context):
+    update.message.reply_text(
+        "⚠️ Lệnh không hợp lệ.\n"
+        "Dùng /help để xem các lệnh hỗ trợ."
+    )
 
 dispatcher.add_handler(CommandHandler("start", start))
 dispatcher.add_handler(CommandHandler("help", help_command))
+dispatcher.add_handler(CommandHandler("list", list_command))
 dispatcher.add_handler(CommandHandler("refresh", refresh_cache))
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
+dispatcher.add_handler(MessageHandler(Filters.command, unknown_command))
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
