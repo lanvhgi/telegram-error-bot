@@ -11,10 +11,10 @@ import asyncio
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
 # Token của bot (lấy từ biến môi trường)
-TOKEN = os.getenv("7501905898:AAGBW1WET2MWpEZQl-K1EXpHBcJe_yU9R8E")
+TOKEN = os.getenv("TELEGRAM_TOKEN")
 
 # Thông tin Google Sheets
-SPREADSHEET_ID = os.getenv("1Or2XB3eMJXhReZZ5jcg3-fna5l95-DUKwgWvH2e6mlk")
+SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")
 RANGE_NAME = "ErrorCodes!A2:C"
 
 # Thiết lập thông tin xác thực Google Sheets từ biến môi trường
