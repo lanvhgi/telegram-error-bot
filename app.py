@@ -78,11 +78,11 @@ def start(update, context):
 
 def help_command(update, context):
     help_text = (
-        "📘 <b>Hướng dẫn tra cứu mã lỗi</b>"
-        "🔍 Vui lòng tìm dòng có chứa <b>FaultID</b> hoặc <b>additionalFaultID</b> trong phiếu xử lý sự cố."
-        "🔢 Mã lỗi thường là một dãy số như <code>1907</code>, <code>2004</code>, v.v."
-        "📌 Gửi mã lỗi đó vào đây để bot trả về mô tả và cách xử lý."
-        "📎 Ví dụ vị trí mã lỗi:<b>additionalFaultID=1907</b> (nằm trong phần Nội dung cảnh báo)"
+        "📘 <b>Hướng dẫn tra cứu mã lỗi</b> 🔍\n"
+        "Vui lòng tìm dòng có chứa <b>FaultID</b> hoặc <b>additionalFaultID</b> trong phiếu xử lý sự cố.\n"
+        "🔢 Mã lỗi thường là một dãy số như <code>1907</code>, <code>2004</code>, v.v.\n\n"
+        "📌 Gửi mã lỗi đó vào đây để bot trả về mô tả và cách xử lý.\n"
+        "📎 Ví dụ: <code>additionalFaultID=1907</code> (nằm trong phần 'Nội dung cảnh báo')\n\n"
         "🖼 Xem ảnh minh họa bên dưới để dễ hình dung hơn."
     )
     update.message.reply_text(help_text, parse_mode='HTML')
@@ -93,10 +93,10 @@ def help_command(update, context):
         update.message.reply_text("⚠️ Không tìm thấy ảnh hướng dẫn. Vui lòng kiểm tra file guide_image.png.")
 
     command_info = (
-        "✅ <b>Các lệnh hỗ trợ:</b>"
-        "• <code>/help</code> - Hướng dẫn cách tìm mã lỗi và sử dụng bot"
-        "• <code>/list</code> - Hiển thị danh sách tất cả mã lỗi hỗ trợ"
-        "• <code>/refresh</code> - Làm mới lại dữ liệu mã lỗi từ Google Sheets"
+        "✅ <b>Các lệnh hỗ trợ:</b>\n"
+        "• <code>/help</code> – Cách tìm mã lỗi và sử dụng bot\n"
+        "• <code>/list</code> – Danh sách tất cả mã lỗi hỗ trợ\n"
+        "• <code>/refresh</code> – Làm mới dữ liệu mã lỗi từ Google Sheets"
     )
     update.message.reply_text(command_info, parse_mode='HTML')
 
