@@ -1,1 +1,1 @@
-web: gunicorn err_bot:app
+web: gunicorn app:app
