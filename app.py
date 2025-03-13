@@ -93,7 +93,11 @@ def refresh_cache(update, context):
 
 def handle_message(update, context):
     user_input = update.message.text.strip()
+    chat = update.effective_chat
+
     logger.info(f"Người dùng gửi: {user_input}")
+    logger.info(f"Chat ID: {chat.id} | Loại: {chat.type} | Tên: {chat.title}")
+
     error_codes = get_error_codes_from_sheets()
     if user_input in error_codes:
         info = error_codes[user_input]
@@ -105,6 +109,7 @@ def handle_message(update, context):
         )
     else:
         reply = f"❌ Không tìm thấy thông tin cho mã lỗi <b>{user_input}</b>.\nVui lòng thử lại mã khác."
+
     update.message.reply_text(reply, parse_mode='HTML')
 
 dispatcher.add_handler(CommandHandler("start", start))
