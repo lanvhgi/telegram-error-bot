@@ -100,7 +100,7 @@ application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_m
 @app.route('/webhook', methods=['POST'])
 def webhook():
     update = Update.de_json(request.get_json(force=True), application.bot)
-    asyncio.run_coroutine_threadsafe(application.process_update(update), application.loop)
+    asyncio.run_coroutine_threadsafe(application.process_update(update), loop)
     return "OK", 200
 
 # Hàm thiết lập webhook
@@ -119,5 +119,5 @@ if __name__ == "__main__":
     loop.run_until_complete(set_webhook())
 
     # Chạy Flask app
-    port = int(os.getenv("PORT", 10000))  # Render sẽ cung cấp cổng qua biến PORT
+    port = int(os.getenv("PORT"))  # Render sẽ cung cấp cổng qua biến PORT
     app.run(host="0.0.0.0", port=port)
