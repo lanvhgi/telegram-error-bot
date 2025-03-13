@@ -8,11 +8,11 @@ from telegram.ext import Dispatcher, CommandHandler, MessageHandler, Filters
 from googleapiclient.discovery import build
 from google.oauth2 import service_account
 
-# Logging
+# Thiết lập logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Biến môi trường
+# Đọc biến môi trường
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")
 PROJECT_ID = os.getenv("PROJECT_ID")
@@ -24,16 +24,10 @@ CLIENT_X509_CERT_URL = os.getenv("CLIENT_X509_CERT_URL")
 RENDER_EXTERNAL_URL = os.getenv("RENDER_EXTERNAL_URL")
 PORT = int(os.getenv("PORT", 8080))
 
-# Kiểm tra đủ biến môi trường
-required_vars = [
-    TOKEN, SPREADSHEET_ID, PROJECT_ID, PRIVATE_KEY_ID,
-    PRIVATE_KEY, CLIENT_EMAIL, CLIENT_ID,
-    CLIENT_X509_CERT_URL, RENDER_EXTERNAL_URL
-]
+required_vars = [TOKEN, SPREADSHEET_ID, PROJECT_ID, PRIVATE_KEY_ID, PRIVATE_KEY, CLIENT_EMAIL, CLIENT_ID, CLIENT_X509_CERT_URL, RENDER_EXTERNAL_URL]
 if not all(required_vars):
-    raise EnvironmentError("Thiếu một hoặc nhiều biến môi trường.")
+    raise EnvironmentError("Thiếu một hoặc nhiều biến môi trường. Vui lòng kiểm tra .env hoặc Render settings.")
 
-# Google Sheets API
 SERVICE_ACCOUNT_INFO = {
     "type": "service_account",
     "project_id": PROJECT_ID,
@@ -47,16 +41,15 @@ SERVICE_ACCOUNT_INFO = {
     "client_x509_cert_url": CLIENT_X509_CERT_URL,
     "universe_domain": "googleapis.com"
 }
+
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
 creds = service_account.Credentials.from_service_account_info(SERVICE_ACCOUNT_INFO, scopes=SCOPES)
 service = build('sheets', 'v4', credentials=creds)
 
-# Flask app
 app = Flask(__name__)
 bot = Bot(token=TOKEN)
-dispatcher = Dispatcher(bot, None, workers=0, use_context=True)
+dispatcher = Dispatcher(bot, None, use_context=True)
 
-# Lấy dữ liệu mã lỗi và cache
 @lru_cache(maxsize=1)
 def get_error_codes_from_sheets():
     try:
@@ -76,7 +69,6 @@ def get_error_codes_from_sheets():
         logger.error(f"Lỗi khi lấy dữ liệu từ Google Sheets: {e}")
         return {}
 
-# Handlers
 def start(update, context):
     update.message.reply_text(
         "Xin chào! Tôi là Bot Tra cứu Mã Lỗi.\n"
@@ -89,30 +81,33 @@ def help_command(update, context):
         "VD: chỉ cần gõ 400"
     )
 
+def refresh_cache(update, context):
+    try:
+        get_error_codes_from_sheets.cache_clear()
+        update.message.reply_text("✅ Cache đã được làm mới. Hãy thử lại tra cứu.")
+        logger.info("Cache đã được làm mới theo lệnh /refresh.")
+    except Exception as e:
+        logger.error(f"Lỗi khi làm mới cache: {e}")
+        update.message.reply_text("❌ Có lỗi khi làm mới cache.")
+
 def handle_message(update, context):
     user_input = update.message.text.strip()
     logger.info(f"Người dùng gửi: {user_input}")
     error_codes = get_error_codes_from_sheets()
     if user_input in error_codes:
         info = error_codes[user_input]
-        reply = (
-            f"🔍 *Mã lỗi:* `{user_input}`\n\n"
-            f"📄 *Mô tả:*\n{info['description']}\n\n"
-            f"🛠 *Cách xử lý:*\n{info['solution']}"
-        )
+        reply = f"\u2728 <b>Mã Lỗi:</b> <code>{user_input}</code>\n\n" \
+                f"<b>Mô tả:</b> {info['description']}\n\n" \
+                f"<b>Cách xử lý:</b> {info['solution']}"
     else:
-        reply = (
-            f"❌ Không tìm thấy thông tin cho mã lỗi *{user_input}*.\n"
-            f"Vui lòng kiểm tra lại mã và thử lại."
-        )
-    update.message.reply_text(reply, parse_mode="Markdown")
+        reply = f"❌ Không tìm thấy thông tin cho mã lỗi {user_input}.\nVui lòng thử lại mã khác."
+    update.message.reply_text(reply, parse_mode='HTML')
 
-# Đăng ký handler
 dispatcher.add_handler(CommandHandler("start", start))
 dispatcher.add_handler(CommandHandler("help", help_command))
+dispatcher.add_handler(CommandHandler("refresh", refresh_cache))
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
 
-# Webhook endpoint
 @app.route("/webhook", methods=["POST"])
 def webhook():
     logger.info("Webhook nhận yêu cầu mới.")
@@ -125,14 +120,11 @@ def webhook():
         return "Lỗi", 500
     return "OK", 200
 
-# Check endpoint
 @app.route("/")
 def index():
     return "Bot đang chạy!", 200
 
-# Thiết lập webhook khi chạy trực tiếp
 if __name__ == "__main__":
-    bot.delete_webhook()
     webhook_url = f"https://{RENDER_EXTERNAL_URL}/webhook"
     bot.set_webhook(url=webhook_url)
     logger.info(f"✅ Đã thiết lập webhook: {webhook_url}")
