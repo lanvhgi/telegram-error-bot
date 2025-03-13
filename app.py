@@ -99,6 +99,7 @@ application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_m
 # Route webhook cho Flask
 @app.route('/webhook', methods=['POST'])
 def webhook():
+    logging.info("Received webhook request")
     update = Update.de_json(request.get_json(force=True), application.bot)
     asyncio.run_coroutine_threadsafe(application.process_update(update), loop)
     return "OK", 200
