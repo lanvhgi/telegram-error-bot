@@ -79,6 +79,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Hàm xử lý tin nhắn người dùng (tra cứu mã lỗi)
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    logging.info(f"Received message: {update.message.text}")
     user_input = update.message.text.strip()
     error_codes = get_error_codes_from_sheets()
     if user_input in error_codes:
