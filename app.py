@@ -7,6 +7,7 @@ from telegram import Bot, Update
 from telegram.ext import Dispatcher, CommandHandler, MessageHandler, Filters
 from googleapiclient.discovery import build
 from google.oauth2 import service_account
+from telegram import InputFile
 
 # Thiết lập logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -77,10 +78,23 @@ def start(update, context):
     )
 
 def help_command(update, context):
-    update.message.reply_text(
-        "Gửi mã lỗi (ví dụ: 400, 401, 500) để tôi trả lời mô tả và cách xử lý.\n"
-        "VD: chỉ cần gõ 400"
+    help_text = (
+        "📘 <b>Hướng dẫn tra cứu mã lỗi</b>\n\n"
+        "🔍 Vui lòng tìm dòng có chứa <b>FaultID</b> hoặc <b>additionalFaultID</b> trong phiếu xử lý sự cố.\n"
+        "🔢 Mã lỗi thường là một dãy số như <code>1907</code>, <code>2004</code>, v.v.\n\n"
+        "📌 Gửi mã lỗi đó vào đây để bot trả về mô tả và cách xử lý.\n\n"
+        "📎 Ví dụ vị trí mã lỗi:\n<b>additionalFaultID=1907</b> (nằm trong phần Nội dung cảnh báo)\n\n"
+        "🖼 Xem ảnh minh họa bên dưới để dễ hình dung hơn."
     )
+
+    update.message.reply_text(help_text, parse_mode='HTML')
+
+    # Gửi ảnh minh họa (ảnh nằm trong cùng thư mục với mã)
+    try:
+        with open("guide_image.png", "rb") as img:
+            update.message.reply_photo(photo=InputFile(img))
+    except FileNotFoundError:
+        update.message.reply_text("⚠️ Không tìm thấy ảnh hướng dẫn. Vui lòng kiểm tra file guide_image.png.")
 
 def refresh_cache(update, context):
     try:
