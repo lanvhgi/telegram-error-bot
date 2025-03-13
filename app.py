@@ -54,15 +54,16 @@ dispatcher = Dispatcher(bot, None, use_context=True)
 def get_error_codes_from_sheets():
     try:
         sheet = service.spreadsheets()
-        result = sheet.values().get(spreadsheetId=SPREADSHEET_ID, range="ErrorCodes!A2:C").execute()
+        result = sheet.values().get(spreadsheetId=SPREADSHEET_ID, range="ErrorCodes!A2:D").execute()
         values = result.get('values', [])
         error_codes = {}
         for row in values:
-            if len(row) >= 3:
+            if len(row) >= 4:
                 error_code = row[0].strip()
                 error_codes[error_code] = {
-                    "description": row[1],
-                    "solution": row[2]
+                    "description_en": row[1],
+                    "description_vi": row[2],
+                    "solution": row[3]
                 }
         return error_codes
     except Exception as e:
@@ -96,11 +97,14 @@ def handle_message(update, context):
     error_codes = get_error_codes_from_sheets()
     if user_input in error_codes:
         info = error_codes[user_input]
-        reply = f"\u2728 <b>Mã Lỗi:</b> <code>{user_input}</code>\n\n" \
-                f"<b>Mô tả:</b> {info['description']}\n\n" \
-                f"<b>Cách xử lý:</b> {info['solution']}"
+        reply = (
+            f"📟 <b>Mã Lỗi:</b> <code>{user_input}</code>\n\n"
+            f"🇬🇧 <b>Mô tả (EN):</b> {info['description_en']}\n"
+            f"🇻🇳 <b>Mô tả (VI):</b> {info['description_vi']}\n\n"
+            f"🛠 <b>Cách xử lý:</b>\n{info['solution']}"
+        )
     else:
-        reply = f"❌ Không tìm thấy thông tin cho mã lỗi {user_input}.\nVui lòng thử lại mã khác."
+        reply = f"❌ Không tìm thấy thông tin cho mã lỗi <b>{user_input}</b>.\nVui lòng thử lại mã khác."
     update.message.reply_text(reply, parse_mode='HTML')
 
 dispatcher.add_handler(CommandHandler("start", start))
