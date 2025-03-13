@@ -95,12 +95,17 @@ def handle_message(update, context):
     error_codes = get_error_codes_from_sheets()
     if user_input in error_codes:
         info = error_codes[user_input]
-        reply = f"Mã Lỗi: {user_input}\n\n" \
-                f"Mô tả: {info['description']}\n\n" \
-                f"Cách xử lý: {info['solution']}"
+        reply = (
+            f"🔍 *Mã lỗi:* `{user_input}`\n\n"
+            f"📄 *Mô tả:*\n{info['description']}\n\n"
+            f"🛠 *Cách xử lý:*\n{info['solution']}"
+        )
     else:
-        reply = f"❌ Không tìm thấy thông tin cho mã lỗi {user_input}.\nVui lòng thử lại mã khác."
-    update.message.reply_text(reply)
+        reply = (
+            f"❌ Không tìm thấy thông tin cho mã lỗi *{user_input}*.\n"
+            f"Vui lòng kiểm tra lại mã và thử lại."
+        )
+    update.message.reply_text(reply, parse_mode="Markdown")
 
 # Đăng ký handler
 dispatcher.add_handler(CommandHandler("start", start))
