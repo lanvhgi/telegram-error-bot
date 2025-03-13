@@ -109,11 +109,12 @@ async def set_webhook():
     await application.bot.set_webhook(url=webhook_url)
     logging.info(f"Webhook set to {webhook_url}")
 
+# Tạo loop asyncio
+loop = asyncio.get_event_loop()
+application.loop = loop
+
 # Khởi động bot
 if __name__ == "__main__":
-    # Tạo loop asyncio
-    loop = asyncio.get_event_loop()
-    application.loop = loop
 
     # Thiết lập webhook
     loop.run_until_complete(set_webhook())
