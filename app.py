@@ -82,7 +82,7 @@ def help_command(update, context):
         "📘 <b>Hướng dẫn tra cứu mã lỗi</b> 🔍\n"
         "Vui lòng tìm dòng có chứa <b>FaultID</b> hoặc <b>additionalFaultID</b> trong phiếu xử lý sự cố.\n"
         "🔢 Mã lỗi thường là một dãy số như <code>1907</code>, <code>2004</code>, v.v.\n\n"
-        "📌 Gửi mã lỗi theo cú pháp: <code>/<mã lỗi></code> (ví dụ: <code>/1907</code>).\n"
+        "📌 Gửi mã lỗi theo cú pháp: <code>/[mã lỗi]</code> (ví dụ: <code>/1907</code>).\n"
         "📎 Ví dụ: <code>additionalFaultID=1907</code> (nằm trong phần 'Nội dung cảnh báo')\n\n"
         "🖼 Xem ảnh minh họa bên dưới để dễ hình dung hơn."
     )
