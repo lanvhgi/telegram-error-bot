@@ -73,8 +73,7 @@ def get_error_codes_from_sheets():
 def start(update, context):
     update.message.reply_text(
         "Xin chào! Tôi là Bot Tra cứu Mã Lỗi.\n"
-        "Gửi mã lỗi bằng cú pháp /<mã lỗi> (ví dụ: /400 hoặc /401) để tôi giúp bạn tra cứu.\n"
-        "Dùng /help để biết thêm chi tiết."
+        "Gửi mã lỗi như 400 hoặc 401 để tôi giúp bạn tra cứu."
     )
 
 def help_command(update, context):
@@ -82,7 +81,7 @@ def help_command(update, context):
         "📘 <b>Hướng dẫn tra cứu mã lỗi</b> 🔍\n"
         "Vui lòng tìm dòng có chứa <b>FaultID</b> hoặc <b>additionalFaultID</b> trong phiếu xử lý sự cố.\n"
         "🔢 Mã lỗi thường là một dãy số như <code>1907</code>, <code>2004</code>, v.v.\n\n"
-        "📌 Gửi mã lỗi theo cú pháp: <code>/<mã lỗi></code> (ví dụ: <code>/1907</code>).\n"
+        "📌 Gửi mã lỗi đó vào đây để bot trả về mô tả và cách xử lý.\n"
         "📎 Ví dụ: <code>additionalFaultID=1907</code> (nằm trong phần 'Nội dung cảnh báo')\n\n"
         "🖼 Xem ảnh minh họa bên dưới để dễ hình dung hơn."
     )
@@ -93,13 +92,21 @@ def help_command(update, context):
     except FileNotFoundError:
         update.message.reply_text("⚠️ Không tìm thấy ảnh hướng dẫn. Vui lòng kiểm tra file guide_image.png.")
 
+    command_info = (
+        "✅ <b>Các lệnh hỗ trợ:</b>\n"
+        "• <code>/help</code> – Cách tìm mã lỗi và sử dụng bot\n"
+        "• <code>/list</code> – Danh sách tất cả mã lỗi hỗ trợ\n"
+        "• <code>/refresh</code> – Làm mới dữ liệu mã lỗi từ Google Sheets"
+    )
+    update.message.reply_text(command_info, parse_mode='HTML')
+
 def list_command(update, context):
     error_codes = get_error_codes_from_sheets()
     if not error_codes:
         update.message.reply_text("⚠️ Chưa có mã lỗi nào được tải từ Google Sheets.")
         return
     message = "📋 <b>Danh sách mã lỗi đang hỗ trợ:</b>\n\n"
-    message += "\n".join(f"• <code>/{code}</code>" for code in sorted(error_codes.keys()))
+    message += "\n".join(f"• <code>{code}</code>" for code in sorted(error_codes.keys()))
     update.message.reply_text(message, parse_mode='HTML')
 
 def refresh_cache(update, context):
@@ -111,10 +118,11 @@ def refresh_cache(update, context):
         logger.error(f"Lỗi khi làm mới cache: {e}")
         update.message.reply_text("❌ Có lỗi khi làm mới cache.")
 
-def handle_error_code(update, context):
-    user_input = update.message.text.strip().lstrip('/')
-    logger.info(f"Người dùng gửi: /{user_input}")
-    logger.info(f"Chat ID: {update.effective_chat.id} | Loại: {update.effective_chat.type} | Tên: {update.effective_chat.title}")
+def handle_message(update, context):
+    user_input = update.message.text.strip()
+    chat = update.effective_chat
+    logger.info(f"Người dùng gửi: {user_input}")
+    logger.info(f"Chat ID: {chat.id} | Loại: {chat.type} | Tên: {chat.title}")
     error_codes = get_error_codes_from_sheets()
     if user_input in error_codes:
         info = error_codes[user_input]
@@ -132,20 +140,16 @@ def handle_error_code(update, context):
     update.message.reply_text(reply, parse_mode='HTML')
 
 def unknown_command(update, context):
-    user_input = update.message.text.strip()
-    if user_input.startswith('/'):
-        update.message.reply_text(
-            "⚠️ Lệnh không hợp lệ hoặc mã lỗi không tồn tại.\n"
-            "Dùng /help để xem hướng dẫn hoặc /list để xem danh sách mã lỗi hỗ trợ."
-        )
-    # Không trả lời nếu không có /
+    update.message.reply_text(
+        "⚠️ Lệnh không hợp lệ.\n"
+        "Dùng /help để xem các lệnh hỗ trợ."
+    )
 
-# Thêm handler cho các lệnh mã lỗi tùy chỉnh
-dispatcher.add_handler(CommandHandler(r'(\d+)', handle_error_code))
 dispatcher.add_handler(CommandHandler("start", start))
 dispatcher.add_handler(CommandHandler("help", help_command))
 dispatcher.add_handler(CommandHandler("list", list_command))
 dispatcher.add_handler(CommandHandler("refresh", refresh_cache))
+dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
 dispatcher.add_handler(MessageHandler(Filters.command, unknown_command))
 
 @app.route("/webhook", methods=["POST"])
