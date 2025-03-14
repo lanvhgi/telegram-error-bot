@@ -201,7 +201,7 @@ def unknown_command(update, context):
 
 # Hàm ping để giữ bot awake
 def keep_alive():
-    ping_url = f"https://{RENDER_EXTERNAL_URL}/"
+    ping_url = f"{RENDER_EXTERNAL_URL}/"
     while True:
         try:
             logger.info(f"Pinging {ping_url} to keep bot alive")
