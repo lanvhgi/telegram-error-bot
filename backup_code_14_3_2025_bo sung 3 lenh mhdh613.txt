@@ -7,9 +7,6 @@ from telegram import Bot, Update, InputFile
 from telegram.ext import Dispatcher, CommandHandler, MessageHandler, Filters
 from googleapiclient.discovery import build
 from google.oauth2 import service_account
-import threading
-import requests
-import time
 
 # Thiết lập logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -198,22 +195,6 @@ def unknown_command(update, context):
             "Dùng /help để xem hướng dẫn hoặc /list để xem danh sách mã lỗi hỗ trợ."
         )
     # Không trả lời nếu không có /
-
-# Hàm ping để giữ bot awake
-def keep_alive():
-    ping_url = f"https://{RENDER_EXTERNAL_URL}/"
-    while True:
-        try:
-            logger.info(f"Pinging {ping_url} to keep bot alive")
-            requests.get(ping_url)
-            time.sleep(300)  # Ping mỗi 5 phút (300 giây)
-        except Exception as e:
-            logger.error(f"Lỗi khi ping: {e}")
-            time.sleep(300)
-
-# Khởi động thread ping
-ping_thread = threading.Thread(target=keep_alive, daemon=True)
-ping_thread.start()
 
 # Thêm handler cho các lệnh mã lỗi tùy chỉnh
 dispatcher.add_handler(MessageHandler(Filters.regex(r'^/(\d+)$'), handle_error_code))
