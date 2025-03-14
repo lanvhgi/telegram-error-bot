@@ -141,7 +141,7 @@ def unknown_command(update, context):
     # Không trả lời nếu không có /
 
 # Thêm handler cho các lệnh mã lỗi tùy chỉnh
-dispatcher.add_handler(CommandHandler(r'(\d+)', handle_error_code))
+dispatcher.add_handler(MessageHandler(Filters.regex(r'^/(\d+)$'), handle_error_code))
 dispatcher.add_handler(CommandHandler("start", start))
 dispatcher.add_handler(CommandHandler("help", help_command))
 dispatcher.add_handler(CommandHandler("list", list_command))
