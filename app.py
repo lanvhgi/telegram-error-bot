@@ -93,6 +93,14 @@ def help_command(update, context):
     except FileNotFoundError:
         update.message.reply_text("⚠️ Không tìm thấy ảnh hướng dẫn. Vui lòng kiểm tra file guide_image.png.")
 
+    command_info = (
+        "✅ <b>Các lệnh hỗ trợ:</b>\n"
+        "• <code>/help</code> – Cách tìm mã lỗi và sử dụng bot\n"
+        "• <code>/list</code> – Danh sách tất cả mã lỗi hỗ trợ\n"
+        "• <code>/refresh</code> – Làm mới dữ liệu mã lỗi từ Google Sheets"
+    )
+    update.message.reply_text(command_info, parse_mode='HTML')
+
 def list_command(update, context):
     error_codes = get_error_codes_from_sheets()
     if not error_codes:
