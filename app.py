@@ -97,7 +97,7 @@ def start(update, context):
     update.message.reply_text(
         "Xin chào! Tôi là Bot Tra cứu Mã Lỗi.\n"
         "Gửi mã lỗi bằng cú pháp /<mã lỗi> (ví dụ: /400 hoặc /401) để tôi giúp bạn tra cứu.\n"
-        "Gửi từ khóa (ví dụ: qtgs, htktm1, ktdb) để tra cứu kiến thức.\n"
+        "Gửi từ khóa kiến thức bằng cú pháp /<từ khóa> (ví dụ: /qtgsttp, /htktm1, /ktdb).\n"
         "Dùng /help để biết thêm chi tiết."
     )
 
@@ -121,7 +121,7 @@ def help_command(update, context):
     knowledge_data = get_knowledge_from_sheets()
     knowledge_commands = []
     for keyword, info in knowledge_data.items():
-        command = f"• <code>{keyword}</code> – {info['title']}"
+        command = f"• <code>/{keyword}</code> – {info['title']}"
         knowledge_commands.append(command)
 
     command_info = (
@@ -153,7 +153,7 @@ def refresh_cache(update, context):
         update.message.reply_text("❌ Có lỗi khi làm mới cache.")
 
 def knowledge_command(update, context):
-    user_input = update.message.text.strip().lower()
+    user_input = update.message.text.strip().lstrip('/').lower()
     logger.info(f"Người dùng tra cứu kiến thức với từ khóa: {user_input}")
     knowledge_data = get_knowledge_from_sheets()
 
@@ -217,7 +217,7 @@ ping_thread.start()
 # Tạo regex từ các từ khóa trong knowledge_data
 knowledge_data = get_knowledge_from_sheets()
 knowledge_keywords = "|".join(re.escape(keyword) for keyword in knowledge_data.keys())
-knowledge_pattern = re.compile(fr'^{knowledge_keywords}$', re.IGNORECASE)
+knowledge_pattern = re.compile(fr'^/({knowledge_keywords})$', re.IGNORECASE)
 knowledge_handler = MessageHandler(Filters.regex(knowledge_pattern), knowledge_command)
 
 dispatcher.add_handler(MessageHandler(Filters.regex(r'^/(\d+)$'), handle_error_code))
