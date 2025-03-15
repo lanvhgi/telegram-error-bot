@@ -154,11 +154,13 @@ def refresh_cache(update, context):
         knowledge_keywords = "|".join(re.escape(keyword) for keyword in knowledge_data.keys())
         knowledge_pattern = re.compile(fr'^/({knowledge_keywords})$', re.IGNORECASE)
         
-        # Xóa handler cũ và thêm handler mới
-        for handler in dispatcher.handlers[None]:
+        # Xóa handler cũ
+        for handler in list(dispatcher.handlers[None]):  # Sử dụng list() để tránh lỗi khi lặp
             if isinstance(handler, MessageHandler) and handler.filters == Filters.regex(knowledge_pattern):
                 dispatcher.remove_handler(handler)
                 break
+        
+        # Thêm handler mới
         knowledge_handler = MessageHandler(Filters.regex(knowledge_pattern), knowledge_command)
         dispatcher.add_handler(knowledge_handler)
 
@@ -166,23 +168,31 @@ def refresh_cache(update, context):
         logger.info(f"Cache đã được làm mới và knowledge_handler đã được cập nhật với keywords: {knowledge_keywords}")
     except Exception as e:
         logger.error(f"Lỗi khi làm mới cache: {e}")
-        update.message.reply_text("❌ Có lỗi khi làm mới cache.")
+        update.message.reply_text("❌ Có lỗi khi làm mới cache: " + str(e))
 
 def knowledge_command(update, context):
-    user_input = update.message.text.strip().lstrip('/').lower()
-    logger.info(f"Người dùng tra cứu kiến thức với từ khóa: {user_input}")
+    user_input = update.message.text.strip().lower()  # Giữ nguyên / để khớp với regex
+    logger.info(f"Người dùng tra cứu kiến thức với lệnh: {user_input}")
     knowledge_data = get_knowledge_from_sheets()
-
-    if user_input in knowledge_data:
-        info = knowledge_data[user_input]
-        reply = (
-            f"📚 <b>{info['title']}</b>\n\n"
-            f"{info['content']}"
-        )
+    
+    # Tách từ khóa sau /
+    if user_input.startswith('/'):
+        keyword = user_input[1:].lower()
+        if keyword in knowledge_data:
+            info = knowledge_data[keyword]
+            reply = (
+                f"📚 <b>{info['title']}</b>\n\n"
+                f"{info['content']}"
+            )
+        else:
+            reply = (
+                f"❌ Không tìm thấy thông tin cho từ khóa <b>{user_input}</b>.\n"
+                "Vui lòng thử từ khóa khác hoặc dùng /help để xem danh sách."
+            )
     else:
         reply = (
-            f"❌ Không tìm thấy thông tin cho từ khóa <b>{user_input}</b>.\n"
-            "Vui lòng thử từ khóa khác hoặc dùng /help để xem danh sách."
+            f"❌ Lệnh không hợp lệ. Vui lòng sử dụng /<từ khóa> (ví dụ: /bktm).\n"
+            "Dùng /help để xem hướng dẫn."
         )
     update.message.reply_text(reply, parse_mode='HTML')
 
