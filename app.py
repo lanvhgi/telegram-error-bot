@@ -11,6 +11,7 @@ import threading
 import requests
 import time
 import re
+import difflib  # Thêm thư viện để tính độ tương đồng
 
 # Thiết lập logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -100,7 +101,7 @@ def start(update, context):
     update.message.reply_text(
         "Xin chào! Tôi là Bot Tra cứu Mã Lỗi.\n"
         "Gửi mã lỗi bằng cú pháp /<mã lỗi> (ví dụ: /400 hoặc /401) để tôi giúp bạn tra cứu.\n"
-        "Gửi từ khóa kiến thức bằng cú pháp /<từ khóa> (ví dụ: /qtgsttp, /bktm, /bd).\n"
+        "Gửi từ khóa kiến thức bằng cú pháp /<từ khóa> (ví dụ: /qtgsttp, /bktm).\n"
         "Dùng /help để biết thêm chi tiết."
     )
 
@@ -188,30 +189,58 @@ def knowledge_command(update, context):
                 f"{info['content']}"
             )
         else:
-            reply = (
-                f"❌ Không tìm thấy thông tin cho từ khóa <b>{keyword}</b>.\n"
-                "Vui lòng thử từ khóa khác hoặc dùng /help để xem danh sách."
-            )
+            # Gợi ý từ khóa tương tự
+            similar_keywords = difflib.get_close_matches(keyword, knowledge_data.keys(), n=3, cutoff=0.6)
+            if similar_keywords:
+                suggestions = "\n".join(f"• <code>/{kw}</code>" for kw in similar_keywords)
+                reply = (
+                    f"❌ Không tìm thấy thông tin cho từ khóa <b>{keyword}</b>.\n"
+                    "Có phải bạn muốn tìm:\n"
+                    f"{suggestions}\n\n"
+                    "Hoặc dùng /help để xem danh sách."
+                )
+            else:
+                reply = (
+                    f"❌ Không tìm thấy thông tin cho từ khóa <b>{keyword}</b>.\n"
+                    "Vui lòng thử từ khóa khác hoặc dùng /help để xem danh sách."
+                )
         update.message.reply_text(reply, parse_mode='HTML')
 
 def handle_error_code(update, context):
     user_input = update.message.text.strip().lstrip('/')
     logger.info(f"Người dùng gửi: /{user_input}")
     logger.info(f"Chat ID: {update.effective_chat.id} | Loại: {update.effective_chat.type} | Tên: {update.effective_chat.title}")
-    error_codes = get_error_codes_from_sheets()
-    if user_input in error_codes:
-        info = error_codes[user_input]
+    if not user_input.isdigit():
         reply = (
-            f"📟 <b>Mã Lỗi:</b> <code>{user_input}</code>\n\n"
-            f"🇬🇧 <b>Mô tả (EN):</b> {info['description_en']}\n"
-            f"🇻🇳 <b>Mô tả (VI):</b> {info['description_vi']}\n\n"
-            f"🛠 <b>Cách xử lý:</b>\n{info['solution']}"
-        )
-    else:
-        reply = (
-            f"❌ Không tìm thấy thông tin cho mã lỗi <b>{user_input}</b>.\n"
+            f"❌ Mã lỗi <b>{user_input}</b> không hợp lệ. Mã lỗi chỉ được chứa số (ví dụ: /400).\n"
             "Vui lòng kiểm tra lại hoặc dùng lệnh /list để xem danh sách mã lỗi."
         )
+    else:
+        error_codes = get_error_codes_from_sheets()
+        if user_input in error_codes:
+            info = error_codes[user_input]
+            reply = (
+                f"📟 <b>Mã Lỗi:</b> <code>{user_input}</code>\n\n"
+                f"🇬🇧 <b>Mô tả (EN):</b> {info['description_en']}\n"
+                f"🇻🇳 <b>Mô tả (VI):</b> {info['description_vi']}\n\n"
+                f"🛠 <b>Cách xử lý:</b>\n{info['solution']}"
+            )
+        else:
+            # Gợi ý mã lỗi tương tự
+            similar_codes = difflib.get_close_matches(user_input, error_codes.keys(), n=3, cutoff=0.6)
+            if similar_codes:
+                suggestions = "\n".join(f"• <code>/{code}</code>" for code in similar_codes)
+                reply = (
+                    f"❌ Không tìm thấy thông tin cho mã lỗi <b>{user_input}</b>.\n"
+                    "Có phải bạn muốn tìm:\n"
+                    f"{suggestions}\n\n"
+                    "Hoặc dùng /list để xem danh sách mã lỗi."
+                )
+            else:
+                reply = (
+                    f"❌ Không tìm thấy thông tin cho mã lỗi <b>{user_input}</b>.\n"
+                    "Vui lòng kiểm tra lại hoặc dùng lệnh /list để xem danh sách mã lỗi."
+                )
     update.message.reply_text(reply, parse_mode='HTML')
 
 def unknown_command(update, context):
@@ -223,11 +252,22 @@ def unknown_command(update, context):
         error_codes = get_error_codes_from_sheets()
         known_commands = ['start', 'help', 'list', 'refresh'] + list(knowledge_data.keys()) + list(error_codes.keys())
         if user_input_cleaned not in known_commands and not user_input_cleaned.isdigit():
-            logger.info(f"Kiểm tra từ khóa không hợp lệ: {user_input_cleaned}, từ khóa khả dụng: {list(knowledge_data.keys())}")
-            update.message.reply_text(
-                "⚠️ Lệnh không hợp lệ hoặc mã lỗi không tồn tại.\n"
-                "Dùng /help để xem hướng dẫn hoặc /list để xem danh sách mã lỗi hỗ trợ."
-            )
+            # Gợi ý lệnh tương tự
+            similar_commands = difflib.get_close_matches(user_input_cleaned, known_commands, n=3, cutoff=0.6)
+            if similar_commands:
+                suggestions = "\n".join(f"• <code>/{cmd}</code>" for cmd in similar_commands)
+                reply = (
+                    f"⚠️ Lệnh <b>/{user_input_cleaned}</b> không hợp lệ.\n"
+                    "Có phải bạn muốn dùng:\n"
+                    f"{suggestions}\n\n"
+                    "Hoặc dùng /help để xem hướng dẫn hoặc /list để xem danh sách mã lỗi hỗ trợ."
+                )
+            else:
+                reply = (
+                    f"⚠️ Lệnh <b>/{user_input_cleaned}</b> không hợp lệ.\n"
+                    "Dùng /help để xem hướng dẫn hoặc /list để xem danh sách mã lỗi hỗ trợ."
+                )
+            update.message.reply_text(reply, parse_mode='HTML')
 
 # Hàm ping để giữ bot awake
 def keep_alive():
