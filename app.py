@@ -69,6 +69,7 @@ def get_error_codes_from_sheets():
                     "description_vi": row[2],
                     "solution": row[3]
                 }
+        logger.info(f"Loaded error codes: {list(error_codes.keys())}")
         return error_codes
     except Exception as e:
         logger.error(f"Lỗi khi lấy dữ liệu từ Google Sheets: {e}")
@@ -88,6 +89,7 @@ def get_knowledge_from_sheets():
                     "title": row[1],
                     "content": row[2]
                 }
+        logger.info(f"Loaded knowledge keywords: {list(knowledge_data.keys())}")
         return knowledge_data
     except Exception as e:
         logger.error(f"Lỗi khi lấy dữ liệu kiến thức từ Google Sheets: {e}")
@@ -97,7 +99,7 @@ def start(update, context):
     update.message.reply_text(
         "Xin chào! Tôi là Bot Tra cứu Mã Lỗi.\n"
         "Gửi mã lỗi bằng cú pháp /<mã lỗi> (ví dụ: /400 hoặc /401) để tôi giúp bạn tra cứu.\n"
-        "Gửi từ khóa kiến thức bằng cú pháp /<từ khóa> (ví dụ: /qtgsttp, /htktm1, /ktdb).\n"
+        "Gửi từ khóa kiến thức bằng cú pháp /<từ khóa> (ví dụ: /qtgsttp, /htktm1, /ktdb, /mhdh613).\n"
         "Dùng /help để biết thêm chi tiết."
     )
 
