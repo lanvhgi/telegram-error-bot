@@ -95,10 +95,11 @@ def get_knowledge_from_sheets():
         return {}
 
 def start(update, context):
+    logger.info(f"Xử lý lệnh /start từ chat ID: {update.effective_chat.id}")
     update.message.reply_text(
         "Xin chào! Tôi là Bot Tra cứu Mã Lỗi.\n"
         "Gửi mã lỗi bằng cú pháp /<mã lỗi> (ví dụ: /400 hoặc /401) để tôi giúp bạn tra cứu.\n"
-        "Gửi từ khóa kiến thức bằng cú pháp /<từ khóa> (ví dụ: /qtgsttp, /htktm1, /ktdb, /mhdh613, /bktm, /bd).\n"
+        "Gửi từ khóa kiến thức bằng cú pháp /<từ khóa> (ví dụ: /qtgsttp, /bktm, /bd).\n"
         "Dùng /help để biết thêm chi tiết."
     )
 
@@ -217,6 +218,7 @@ def handle_error_code(update, context):
 
 def unknown_command(update, context):
     user_input = update.message.text.strip()
+    logger.info(f"Xử lý lệnh không hợp lệ: {user_input} từ chat ID: {update.effective_chat.id}")
     if user_input.startswith('/'):
         user_input_cleaned = user_input.lstrip('/').lower()
         knowledge_data = get_knowledge_from_sheets()
@@ -255,7 +257,7 @@ dispatcher.add_handler(CommandHandler("list", list_command), group=0)
 dispatcher.add_handler(CommandHandler("refresh", refresh_cache), group=0)
 dispatcher.add_handler(MessageHandler(Filters.regex(r'^/(\d+)$'), handle_error_code), group=0)
 dispatcher.add_handler(knowledge_handler, group=0)
-dispatcher.add_handler(MessageHandler(Filters.command, unknown_command), group=1)  # unknown_command có ưu tiên thấp hơn
+dispatcher.add_handler(MessageHandler(Filters.command & ~Filters.command(['start', 'help', 'list', 'refresh']), unknown_command), group=1)
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
