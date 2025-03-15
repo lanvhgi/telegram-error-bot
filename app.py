@@ -75,7 +75,6 @@ def get_error_codes_from_sheets():
         logger.error(f"Lỗi khi lấy dữ liệu từ Google Sheets: {e}")
         return {}
 
-@lru_cache(maxsize=1)
 def get_knowledge_from_sheets():
     try:
         sheet = service.spreadsheets()
@@ -149,7 +148,6 @@ def refresh_cache(update, context):
     try:
         # Làm mới cache
         get_error_codes_from_sheets.cache_clear()
-        get_knowledge_from_sheets.cache_clear()
 
         # Tải lại knowledge_data và cập nhật knowledge_handler
         knowledge_data = get_knowledge_from_sheets()
@@ -157,12 +155,15 @@ def refresh_cache(update, context):
         knowledge_pattern = re.compile(fr'^/({knowledge_keywords})$', re.IGNORECASE)
         
         # Xóa handler cũ và thêm handler mới
-        dispatcher.remove_handler(knowledge_handler)
+        for handler in dispatcher.handlers[None]:
+            if isinstance(handler, MessageHandler) and handler.filters == Filters.regex(knowledge_pattern):
+                dispatcher.remove_handler(handler)
+                break
         knowledge_handler = MessageHandler(Filters.regex(knowledge_pattern), knowledge_command)
         dispatcher.add_handler(knowledge_handler)
 
         update.message.reply_text("✅ Cache đã được làm mới. Hãy thử lại tra cứu.")
-        logger.info("Cache đã được làm mới và knowledge_handler đã được cập nhật theo lệnh /refresh.")
+        logger.info(f"Cache đã được làm mới và knowledge_handler đã được cập nhật với keywords: {knowledge_keywords}")
     except Exception as e:
         logger.error(f"Lỗi khi làm mới cache: {e}")
         update.message.reply_text("❌ Có lỗi khi làm mới cache.")
