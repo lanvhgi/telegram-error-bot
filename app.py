@@ -75,6 +75,7 @@ def get_error_codes_from_sheets():
         logger.error(f"Lỗi khi lấy dữ liệu từ Google Sheets: {e}")
         return {}
 
+@lru_cache(maxsize=1)
 def get_knowledge_from_sheets():
     try:
         sheet = service.spreadsheets()
@@ -104,6 +105,7 @@ def start(update, context):
     )
 
 def help_command(update, context):
+    logger.info(f"Xử lý lệnh /help từ chat ID: {update.effective_chat.id}")
     help_text = (
         "📘 <b>Hướng dẫn tra cứu mã lỗi</b> 🔍\n"
         "Vui lòng tìm dòng có chứa <b>FaultID</b> hoặc <b>additionalFaultID</b> trong phiếu xử lý sự cố.\n"
@@ -119,7 +121,7 @@ def help_command(update, context):
     except FileNotFoundError:
         update.message.reply_text("⚠️ Không tìm thấy ảnh hướng dẫn. Vui lòng kiểm tra file guide_image.png.")
 
-    # Lấy danh sách kiến thức từ sheet Mhdh613
+    # Sử dụng dữ liệu từ cache đã làm mới
     knowledge_data = get_knowledge_from_sheets()
     knowledge_commands = []
     for keyword, info in knowledge_data.items():
@@ -147,8 +149,9 @@ def list_command(update, context):
 def refresh_cache(update, context):
     global knowledge_handler
     try:
-        # Làm mới cache
+        # Làm mới cache cho cả error_codes và knowledge
         get_error_codes_from_sheets.cache_clear()
+        get_knowledge_from_sheets.cache_clear()
 
         # Tải lại knowledge_data và cập nhật knowledge_handler
         knowledge_data = get_knowledge_from_sheets()
