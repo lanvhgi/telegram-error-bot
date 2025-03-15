@@ -99,7 +99,7 @@ def start(update, context):
     update.message.reply_text(
         "Xin chào! Tôi là Bot Tra cứu Mã Lỗi.\n"
         "Gửi mã lỗi bằng cú pháp /<mã lỗi> (ví dụ: /400 hoặc /401) để tôi giúp bạn tra cứu.\n"
-        "Gửi từ khóa kiến thức bằng cú pháp /<từ khóa> (ví dụ: /qtgsttp, /htktm1, /ktdb, /mhdh613).\n"
+        "Gửi từ khóa kiến thức bằng cú pháp /<từ khóa> (ví dụ: /qtgsttp, /htktm1, /ktdb, /mhdh613, /bktm).\n"
         "Dùng /help để biết thêm chi tiết."
     )
 
@@ -145,11 +145,24 @@ def list_command(update, context):
     update.message.reply_text(message, parse_mode='HTML')
 
 def refresh_cache(update, context):
+    global knowledge_handler
     try:
+        # Làm mới cache
         get_error_codes_from_sheets.cache_clear()
         get_knowledge_from_sheets.cache_clear()
+
+        # Tải lại knowledge_data và cập nhật knowledge_handler
+        knowledge_data = get_knowledge_from_sheets()
+        knowledge_keywords = "|".join(re.escape(keyword) for keyword in knowledge_data.keys())
+        knowledge_pattern = re.compile(fr'^/({knowledge_keywords})$', re.IGNORECASE)
+        
+        # Xóa handler cũ và thêm handler mới
+        dispatcher.remove_handler(knowledge_handler)
+        knowledge_handler = MessageHandler(Filters.regex(knowledge_pattern), knowledge_command)
+        dispatcher.add_handler(knowledge_handler)
+
         update.message.reply_text("✅ Cache đã được làm mới. Hãy thử lại tra cứu.")
-        logger.info("Cache đã được làm mới theo lệnh /refresh.")
+        logger.info("Cache đã được làm mới và knowledge_handler đã được cập nhật theo lệnh /refresh.")
     except Exception as e:
         logger.error(f"Lỗi khi làm mới cache: {e}")
         update.message.reply_text("❌ Có lỗi khi làm mới cache.")
@@ -195,6 +208,9 @@ def handle_error_code(update, context):
 def unknown_command(update, context):
     user_input = update.message.text.strip()
     if user_input.startswith('/'):
+        user_input_cleaned = user_input.lstrip('/').lower()
+        knowledge_data = get_knowledge_from_sheets()
+        logger.info(f"Kiểm tra từ khóa không hợp lệ: {user_input_cleaned}, từ khóa khả dụng: {list(knowledge_data.keys())}")
         update.message.reply_text(
             "⚠️ Lệnh không hợp lệ hoặc mã lỗi không tồn tại.\n"
             "Dùng /help để xem hướng dẫn hoặc /list để xem danh sách mã lỗi hỗ trợ."
@@ -216,7 +232,7 @@ def keep_alive():
 ping_thread = threading.Thread(target=keep_alive, daemon=True)
 ping_thread.start()
 
-# Tạo regex từ các từ khóa trong knowledge_data
+# Khởi tạo knowledge_handler lần đầu
 knowledge_data = get_knowledge_from_sheets()
 knowledge_keywords = "|".join(re.escape(keyword) for keyword in knowledge_data.keys())
 knowledge_pattern = re.compile(fr'^/({knowledge_keywords})$', re.IGNORECASE)
