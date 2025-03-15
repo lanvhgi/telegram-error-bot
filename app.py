@@ -192,12 +192,7 @@ def knowledge_command(update, context):
                 f"❌ Không tìm thấy thông tin cho từ khóa <b>{keyword}</b>.\n"
                 "Vui lòng thử từ khóa khác hoặc dùng /help để xem danh sách."
             )
-    else:
-        reply = (
-            f"❌ Lệnh không hợp lệ. Vui lòng sử dụng /<từ khóa> (ví dụ: /bktm).\n"
-            "Dùng /help để xem hướng dẫn."
-        )
-    update.message.reply_text(reply, parse_mode='HTML')
+        update.message.reply_text(reply, parse_mode='HTML')
 
 def handle_error_code(update, context):
     user_input = update.message.text.strip().lstrip('/')
@@ -225,11 +220,14 @@ def unknown_command(update, context):
     if user_input.startswith('/'):
         user_input_cleaned = user_input.lstrip('/').lower()
         knowledge_data = get_knowledge_from_sheets()
-        logger.info(f"Kiểm tra từ khóa không hợp lệ: {user_input_cleaned}, từ khóa khả dụng: {list(knowledge_data.keys())}")
-        update.message.reply_text(
-            "⚠️ Lệnh không hợp lệ hoặc mã lỗi không tồn tại.\n"
-            "Dùng /help để xem hướng dẫn hoặc /list để xem danh sách mã lỗi hỗ trợ."
-        )
+        error_codes = get_error_codes_from_sheets()
+        known_commands = ['start', 'help', 'list', 'refresh'] + list(knowledge_data.keys()) + list(error_codes.keys())
+        if user_input_cleaned not in known_commands:
+            logger.info(f"Kiểm tra từ khóa không hợp lệ: {user_input_cleaned}, từ khóa khả dụng: {list(knowledge_data.keys())}")
+            update.message.reply_text(
+                "⚠️ Lệnh không hợp lệ hoặc mã lỗi không tồn tại.\n"
+                "Dùng /help để xem hướng dẫn hoặc /list để xem danh sách mã lỗi hỗ trợ."
+            )
 
 # Hàm ping để giữ bot awake
 def keep_alive():
@@ -260,7 +258,7 @@ dispatcher.add_handler(CommandHandler("list", list_command), group=0)
 dispatcher.add_handler(CommandHandler("refresh", refresh_cache), group=0)
 dispatcher.add_handler(MessageHandler(Filters.regex(r'^/(\d+)$'), handle_error_code), group=0)
 dispatcher.add_handler(knowledge_handler, group=0)
-dispatcher.add_handler(MessageHandler(Filters.command & ~Filters.command(['start', 'help', 'list', 'refresh']), unknown_command), group=1)
+dispatcher.add_handler(MessageHandler(Filters.command, unknown_command), group=1)
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
