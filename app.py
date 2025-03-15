@@ -10,6 +10,7 @@ from google.oauth2 import service_account
 import threading
 import requests
 import time
+import re
 
 # Thiết lập logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -96,7 +97,7 @@ def start(update, context):
     update.message.reply_text(
         "Xin chào! Tôi là Bot Tra cứu Mã Lỗi.\n"
         "Gửi mã lỗi bằng cú pháp /<mã lỗi> (ví dụ: /400 hoặc /401) để tôi giúp bạn tra cứu.\n"
-        "Dùng /knowledge <từ khóa> để tra cứu kiến thức (ví dụ: /knowledge qtgs).\n"
+        "Gửi từ khóa (ví dụ: qtgs, htktm1, ktdb) để tra cứu kiến thức.\n"
         "Dùng /help để biết thêm chi tiết."
     )
 
@@ -120,7 +121,7 @@ def help_command(update, context):
     knowledge_data = get_knowledge_from_sheets()
     knowledge_commands = []
     for keyword, info in knowledge_data.items():
-        command = f"• <code>/{keyword}</code> – {info['title']}"
+        command = f"• <code>{keyword}</code> – {info['title']}"
         knowledge_commands.append(command)
 
     command_info = (
@@ -128,7 +129,6 @@ def help_command(update, context):
         "• <code>/help</code> – Cách tìm mã lỗi và sử dụng bot\n"
         "• <code>/list</code> – Danh sách tất cả mã lỗi hỗ trợ\n"
         "• <code>/refresh</code> – Làm mới dữ liệu mã lỗi từ Google Sheets\n"
-        "• <code>/knowledge <từ khóa></code> – Tra cứu kiến thức (ví dụ: <code>/knowledge qtgs</code>)\n"
         + "\n".join(knowledge_commands)
     )
     update.message.reply_text(command_info, parse_mode='HTML')
@@ -153,68 +153,21 @@ def refresh_cache(update, context):
         update.message.reply_text("❌ Có lỗi khi làm mới cache.")
 
 def knowledge_command(update, context):
-    if not context.args:
-        update.message.reply_text(
-            "⚠️ Vui lòng cung cấp từ khóa để tra cứu kiến thức.\n"
-            "Ví dụ: <code>/knowledge qtgs</code>",
-            parse_mode='HTML'
-        )
-        return
-
-    keyword = " ".join(context.args).strip().lower()
-    logger.info(f"Người dùng tra cứu kiến thức với từ khóa: {keyword}")
+    user_input = update.message.text.strip().lower()
+    logger.info(f"Người dùng tra cứu kiến thức với từ khóa: {user_input}")
     knowledge_data = get_knowledge_from_sheets()
 
-    if keyword in knowledge_data:
-        info = knowledge_data[keyword]
+    if user_input in knowledge_data:
+        info = knowledge_data[user_input]
         reply = (
             f"📚 <b>{info['title']}</b>\n\n"
             f"{info['content']}"
         )
     else:
         reply = (
-            f"❌ Không tìm thấy thông tin cho từ khóa <b>{keyword}</b>.\n"
-            "Vui lòng thử từ khóa khác hoặc liên hệ hỗ trợ."
+            f"❌ Không tìm thấy thông tin cho từ khóa <b>{user_input}</b>.\n"
+            "Vui lòng thử từ khóa khác hoặc dùng /help để xem danh sách."
         )
-    update.message.reply_text(reply, parse_mode='HTML')
-
-def qtgsttp(update, context):
-    keyword = "qtgsttp"
-    knowledge_data = get_knowledge_from_sheets()
-    if keyword in knowledge_data:
-        info = knowledge_data[keyword]
-        reply = (
-            f"📚 <b>{info['title']}</b>\n\n"
-            f"{info['content']}"
-        )
-    else:
-        reply = "❌ Không tìm thấy thông tin cho QTGS T/TP."
-    update.message.reply_text(reply, parse_mode='HTML')
-
-def htktm1(update, context):
-    keyword = "htktm1"
-    knowledge_data = get_knowledge_from_sheets()
-    if keyword in knowledge_data:
-        info = knowledge_data[keyword]
-        reply = (
-            f"📚 <b>{info['title']}</b>\n\n"
-            f"{info['content']}"
-        )
-    else:
-        reply = "❌ Không tìm thấy thông tin cho Hỗ trợ kỹ thuật mức 1."
-    update.message.reply_text(reply, parse_mode='HTML')
-
-def ktdb(update, context):
-    keyword = "ktdb"
-    knowledge_data = get_knowledge_from_sheets()
-    if keyword in knowledge_data:
-        info = knowledge_data[keyword]
-        reply = (
-            f"📚 <b>{info['title']}</b>\n\n"
-            f"{info['content']}"
-        )
-    else:
-        reply = "❌ Không tìm thấy thông tin cho Kỹ thuật địa bàn."
     update.message.reply_text(reply, parse_mode='HTML')
 
 def handle_error_code(update, context):
@@ -261,15 +214,17 @@ def keep_alive():
 ping_thread = threading.Thread(target=keep_alive, daemon=True)
 ping_thread.start()
 
+# Tạo regex từ các từ khóa trong knowledge_data
+knowledge_data = get_knowledge_from_sheets()
+knowledge_keywords = "|".join(re.escape(keyword) for keyword in knowledge_data.keys())
+knowledge_handler = MessageHandler(Filters.regex(fr'^{knowledge_keywords}$', re.IGNORECASE), knowledge_command)
+
 dispatcher.add_handler(MessageHandler(Filters.regex(r'^/(\d+)$'), handle_error_code))
 dispatcher.add_handler(CommandHandler("start", start))
 dispatcher.add_handler(CommandHandler("help", help_command))
 dispatcher.add_handler(CommandHandler("list", list_command))
 dispatcher.add_handler(CommandHandler("refresh", refresh_cache))
-dispatcher.add_handler(CommandHandler("knowledge", knowledge_command))
-dispatcher.add_handler(CommandHandler("qtgsttp", qtgsttp))
-dispatcher.add_handler(CommandHandler("htktm1", htktm1))
-dispatcher.add_handler(CommandHandler("ktdb", ktdb))
+dispatcher.add_handler(knowledge_handler)
 dispatcher.add_handler(MessageHandler(Filters.command, unknown_command))
 
 @app.route("/webhook", methods=["POST"])
