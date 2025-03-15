@@ -98,7 +98,7 @@ def start(update, context):
     update.message.reply_text(
         "Xin chào! Tôi là Bot Tra cứu Mã Lỗi.\n"
         "Gửi mã lỗi bằng cú pháp /<mã lỗi> (ví dụ: /400 hoặc /401) để tôi giúp bạn tra cứu.\n"
-        "Gửi từ khóa kiến thức bằng cú pháp /<từ khóa> (ví dụ: /qtgsttp, /htktm1, /ktdb, /mhdh613, /bktm).\n"
+        "Gửi từ khóa kiến thức bằng cú pháp /<từ khóa> (ví dụ: /qtgsttp, /htktm1, /ktdb, /mhdh613, /bktm, /bd).\n"
         "Dùng /help để biết thêm chi tiết."
     )
 
@@ -129,7 +129,7 @@ def help_command(update, context):
         "✅ <b>Các lệnh hỗ trợ:</b>\n"
         "• <code>/help</code> – Cách tìm mã lỗi và sử dụng bot\n"
         "• <code>/list</code> – Danh sách tất cả mã lỗi hỗ trợ\n"
-        "• <code>/refresh</code> – Làm mới dữ liệu mã lỗi từ Google Sheets\n"
+        "• <code>/refresh</code> – Làm mới dữ liệu từ Google Sheets\n"
         + "\n".join(knowledge_commands)
     )
     update.message.reply_text(command_info, parse_mode='HTML')
@@ -144,14 +144,25 @@ def list_command(update, context):
     update.message.reply_text(message, parse_mode='HTML')
 
 def refresh_cache(update, context):
+    global knowledge_handler
     try:
         # Làm mới cache
         get_error_codes_from_sheets.cache_clear()
-        update.message.reply_text(
-            "✅ Cache đã được làm mới. Để cập nhật từ khóa kiến thức, vui lòng triển khai lại bot trên Render.\n"
-            "Hãy thử tra cứu lại."
-        )
-        logger.info("Cache error codes đã được làm mới theo lệnh /refresh.")
+
+        # Tải lại knowledge_data và cập nhật knowledge_handler
+        knowledge_data = get_knowledge_from_sheets()
+        knowledge_keywords = "|".join(re.escape(keyword) for keyword in knowledge_data.keys())
+        knowledge_pattern = re.compile(fr'^/({knowledge_keywords})$', re.IGNORECASE)
+
+        # Xóa handler cũ
+        dispatcher.handlers[0] = [h for h in dispatcher.handlers[0] if not (isinstance(h, MessageHandler) and h.callback == knowledge_command)]
+
+        # Thêm handler mới
+        knowledge_handler = MessageHandler(Filters.regex(knowledge_pattern), knowledge_command)
+        dispatcher.add_handler(knowledge_handler)
+
+        update.message.reply_text("✅ Cache và từ khóa kiến thức đã được làm mới. Hãy thử lại tra cứu.")
+        logger.info(f"Cache và knowledge_handler đã được làm mới với keywords: {knowledge_keywords}")
     except Exception as e:
         logger.error(f"Lỗi khi làm mới cache: {e}")
         update.message.reply_text("❌ Có lỗi khi làm mới cache: " + str(e))
@@ -161,7 +172,7 @@ def knowledge_command(update, context):
     logger.info(f"Người dùng tra cứu kiến thức với lệnh: {user_input}")
     knowledge_data = get_knowledge_from_sheets()
     
-    # Tách từ khóa sau /
+    # Kiểm tra nếu lệnh khớp với regex
     if user_input.startswith('/'):
         keyword = user_input[1:].lower()
         logger.info(f"Từ khóa sau khi tách: {keyword}, từ khóa khả dụng: {list(knowledge_data.keys())}")
