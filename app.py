@@ -155,11 +155,12 @@ def refresh_cache(update, context):
         knowledge_pattern = re.compile(fr'^/({knowledge_keywords})$', re.IGNORECASE)
 
         # Xóa handler cũ
-        dispatcher.handlers[0] = [h for h in dispatcher.handlers[0] if not (isinstance(h, MessageHandler) and h.callback == knowledge_command)]
+        if knowledge_handler in dispatcher.handlers[0]:
+            dispatcher.remove_handler(knowledge_handler)
 
         # Thêm handler mới
         knowledge_handler = MessageHandler(Filters.regex(knowledge_pattern), knowledge_command)
-        dispatcher.add_handler(knowledge_handler)
+        dispatcher.add_handler(knowledge_handler, group=0)
 
         update.message.reply_text("✅ Cache và từ khóa kiến thức đã được làm mới. Hãy thử lại tra cứu.")
         logger.info(f"Cache và knowledge_handler đã được làm mới với keywords: {knowledge_keywords}")
@@ -247,13 +248,14 @@ knowledge_keywords = "|".join(re.escape(keyword) for keyword in knowledge_data.k
 knowledge_pattern = re.compile(fr'^/({knowledge_keywords})$', re.IGNORECASE)
 knowledge_handler = MessageHandler(Filters.regex(knowledge_pattern), knowledge_command)
 
-dispatcher.add_handler(MessageHandler(Filters.regex(r'^/(\d+)$'), handle_error_code))
-dispatcher.add_handler(CommandHandler("start", start))
-dispatcher.add_handler(CommandHandler("help", help_command))
-dispatcher.add_handler(CommandHandler("list", list_command))
-dispatcher.add_handler(CommandHandler("refresh", refresh_cache))
-dispatcher.add_handler(knowledge_handler)
-dispatcher.add_handler(MessageHandler(Filters.command, unknown_command))
+# Thêm handler theo thứ tự ưu tiên
+dispatcher.add_handler(CommandHandler("start", start), group=0)
+dispatcher.add_handler(CommandHandler("help", help_command), group=0)
+dispatcher.add_handler(CommandHandler("list", list_command), group=0)
+dispatcher.add_handler(CommandHandler("refresh", refresh_cache), group=0)
+dispatcher.add_handler(MessageHandler(Filters.regex(r'^/(\d+)$'), handle_error_code), group=0)
+dispatcher.add_handler(knowledge_handler, group=0)
+dispatcher.add_handler(MessageHandler(Filters.command, unknown_command), group=1)  # unknown_command có ưu tiên thấp hơn
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
