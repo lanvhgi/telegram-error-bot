@@ -217,7 +217,8 @@ ping_thread.start()
 # Tạo regex từ các từ khóa trong knowledge_data
 knowledge_data = get_knowledge_from_sheets()
 knowledge_keywords = "|".join(re.escape(keyword) for keyword in knowledge_data.keys())
-knowledge_handler = MessageHandler(Filters.regex(fr'^{knowledge_keywords}$', re.IGNORECASE), knowledge_command)
+knowledge_pattern = re.compile(fr'^{knowledge_keywords}$', re.IGNORECASE)
+knowledge_handler = MessageHandler(Filters.regex(knowledge_pattern), knowledge_command)
 
 dispatcher.add_handler(MessageHandler(Filters.regex(r'^/(\d+)$'), handle_error_code))
 dispatcher.add_handler(CommandHandler("start", start))
