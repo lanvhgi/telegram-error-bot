@@ -222,7 +222,7 @@ def unknown_command(update, context):
         knowledge_data = get_knowledge_from_sheets()
         error_codes = get_error_codes_from_sheets()
         known_commands = ['start', 'help', 'list', 'refresh'] + list(knowledge_data.keys()) + list(error_codes.keys())
-        if user_input_cleaned not in known_commands:
+        if user_input_cleaned not in known_commands and not user_input_cleaned.isdigit():
             logger.info(f"Kiểm tra từ khóa không hợp lệ: {user_input_cleaned}, từ khóa khả dụng: {list(knowledge_data.keys())}")
             update.message.reply_text(
                 "⚠️ Lệnh không hợp lệ hoặc mã lỗi không tồn tại.\n"
@@ -258,7 +258,7 @@ dispatcher.add_handler(CommandHandler("list", list_command), group=0)
 dispatcher.add_handler(CommandHandler("refresh", refresh_cache), group=0)
 dispatcher.add_handler(MessageHandler(Filters.regex(r'^/(\d+)$'), handle_error_code), group=0)
 dispatcher.add_handler(knowledge_handler, group=0)
-dispatcher.add_handler(MessageHandler(Filters.command, unknown_command), group=1)
+dispatcher.add_handler(MessageHandler(Filters.command & ~Filters.regex(r'^/(\d+)$'), unknown_command), group=1)
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
