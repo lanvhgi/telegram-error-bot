@@ -144,28 +144,14 @@ def list_command(update, context):
     update.message.reply_text(message, parse_mode='HTML')
 
 def refresh_cache(update, context):
-    global knowledge_handler
     try:
         # Làm mới cache
         get_error_codes_from_sheets.cache_clear()
-
-        # Tải lại knowledge_data và cập nhật knowledge_handler
-        knowledge_data = get_knowledge_from_sheets()
-        knowledge_keywords = "|".join(re.escape(keyword) for keyword in knowledge_data.keys())
-        knowledge_pattern = re.compile(fr'^/({knowledge_keywords})$', re.IGNORECASE)
-        
-        # Xóa handler cũ
-        for handler in list(dispatcher.handlers[None]):  # Sử dụng list() để tránh lỗi khi lặp
-            if isinstance(handler, MessageHandler) and handler.filters == Filters.regex(knowledge_pattern):
-                dispatcher.remove_handler(handler)
-                break
-        
-        # Thêm handler mới
-        knowledge_handler = MessageHandler(Filters.regex(knowledge_pattern), knowledge_command)
-        dispatcher.add_handler(knowledge_handler)
-
-        update.message.reply_text("✅ Cache đã được làm mới. Hãy thử lại tra cứu.")
-        logger.info(f"Cache đã được làm mới và knowledge_handler đã được cập nhật với keywords: {knowledge_keywords}")
+        update.message.reply_text(
+            "✅ Cache đã được làm mới. Để cập nhật từ khóa kiến thức, vui lòng triển khai lại bot trên Render.\n"
+            "Hãy thử tra cứu lại."
+        )
+        logger.info("Cache error codes đã được làm mới theo lệnh /refresh.")
     except Exception as e:
         logger.error(f"Lỗi khi làm mới cache: {e}")
         update.message.reply_text("❌ Có lỗi khi làm mới cache: " + str(e))
@@ -178,6 +164,7 @@ def knowledge_command(update, context):
     # Tách từ khóa sau /
     if user_input.startswith('/'):
         keyword = user_input[1:].lower()
+        logger.info(f"Từ khóa sau khi tách: {keyword}, từ khóa khả dụng: {list(knowledge_data.keys())}")
         if keyword in knowledge_data:
             info = knowledge_data[keyword]
             reply = (
@@ -186,7 +173,7 @@ def knowledge_command(update, context):
             )
         else:
             reply = (
-                f"❌ Không tìm thấy thông tin cho từ khóa <b>{user_input}</b>.\n"
+                f"❌ Không tìm thấy thông tin cho từ khóa <b>{keyword}</b>.\n"
                 "Vui lòng thử từ khóa khác hoặc dùng /help để xem danh sách."
             )
     else:
