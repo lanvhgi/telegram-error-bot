@@ -73,10 +73,30 @@ def get_error_codes_from_sheets():
         logger.error(f"Lỗi khi lấy dữ liệu từ Google Sheets: {e}")
         return {}
 
+@lru_cache(maxsize=1)
+def get_knowledge_from_sheets():
+    try:
+        sheet = service.spreadsheets()
+        result = sheet.values().get(spreadsheetId=SPREADSHEET_ID, range="Mhdh613!A2:C").execute()
+        values = result.get('values', [])
+        knowledge_data = {}
+        for row in values:
+            if len(row) >= 3:
+                keyword = row[0].strip().lower()
+                knowledge_data[keyword] = {
+                    "title": row[1],
+                    "content": row[2]
+                }
+        return knowledge_data
+    except Exception as e:
+        logger.error(f"Lỗi khi lấy dữ liệu kiến thức từ Google Sheets: {e}")
+        return {}
+
 def start(update, context):
     update.message.reply_text(
         "Xin chào! Tôi là Bot Tra cứu Mã Lỗi.\n"
         "Gửi mã lỗi bằng cú pháp /<mã lỗi> (ví dụ: /400 hoặc /401) để tôi giúp bạn tra cứu.\n"
+        "Dùng /knowledge <từ khóa> để tra cứu kiến thức (ví dụ: /knowledge qtgs).\n"
         "Dùng /help để biết thêm chi tiết."
     )
 
@@ -96,14 +116,20 @@ def help_command(update, context):
     except FileNotFoundError:
         update.message.reply_text("⚠️ Không tìm thấy ảnh hướng dẫn. Vui lòng kiểm tra file guide_image.png.")
 
+    # Lấy danh sách kiến thức từ sheet Mhdh613
+    knowledge_data = get_knowledge_from_sheets()
+    knowledge_commands = []
+    for keyword, info in knowledge_data.items():
+        command = f"• <code>/{keyword}</code> – {info['title']}"
+        knowledge_commands.append(command)
+
     command_info = (
         "✅ <b>Các lệnh hỗ trợ:</b>\n"
         "• <code>/help</code> – Cách tìm mã lỗi và sử dụng bot\n"
         "• <code>/list</code> – Danh sách tất cả mã lỗi hỗ trợ\n"
         "• <code>/refresh</code> – Làm mới dữ liệu mã lỗi từ Google Sheets\n"
-        "• <code>/qtgsttp</code> – Chức năng nhiệm vụ của Quản trị giám sát mức T/TP\n"
-        "• <code>/htktm1</code> – Chức năng nhiệm vụ của Hỗ trợ kỹ thuật mức 1\n"
-        "• <code>/ktdb</code> – Chức năng nhiệm vụ của Kỹ thuật địa bàn"
+        "• <code>/knowledge <từ khóa></code> – Tra cứu kiến thức (ví dụ: <code>/knowledge qtgs</code>)\n"
+        + "\n".join(knowledge_commands)
     )
     update.message.reply_text(command_info, parse_mode='HTML')
 
@@ -119,56 +145,77 @@ def list_command(update, context):
 def refresh_cache(update, context):
     try:
         get_error_codes_from_sheets.cache_clear()
+        get_knowledge_from_sheets.cache_clear()
         update.message.reply_text("✅ Cache đã được làm mới. Hãy thử lại tra cứu.")
         logger.info("Cache đã được làm mới theo lệnh /refresh.")
     except Exception as e:
         logger.error(f"Lỗi khi làm mới cache: {e}")
         update.message.reply_text("❌ Có lỗi khi làm mới cache.")
 
+def knowledge_command(update, context):
+    if not context.args:
+        update.message.reply_text(
+            "⚠️ Vui lòng cung cấp từ khóa để tra cứu kiến thức.\n"
+            "Ví dụ: <code>/knowledge qtgs</code>",
+            parse_mode='HTML'
+        )
+        return
+
+    keyword = " ".join(context.args).strip().lower()
+    logger.info(f"Người dùng tra cứu kiến thức với từ khóa: {keyword}")
+    knowledge_data = get_knowledge_from_sheets()
+
+    if keyword in knowledge_data:
+        info = knowledge_data[keyword]
+        reply = (
+            f"📚 <b>{info['title']}</b>\n\n"
+            f"{info['content']}"
+        )
+    else:
+        reply = (
+            f"❌ Không tìm thấy thông tin cho từ khóa <b>{keyword}</b>.\n"
+            "Vui lòng thử từ khóa khác hoặc liên hệ hỗ trợ."
+        )
+    update.message.reply_text(reply, parse_mode='HTML')
+
 def qtgsttp(update, context):
-    message = (
-        "📋 <b>Chức năng nhiệm vụ của Quản trị giám sát mức T/TP</b>\n\n"
-        "<b>QTGS Quản trị, giám sát, điều hành chất lượng dịch vụ di động mức Tỉnh/TP có 6 chức năng và nhiệm vụ là:</b>\n"
-        "1. Quản trị, giám sát công tác xử lý phản ánh khách hàng, chất lượng chủ động, Cell chất lượng kém và sự cố trạm vô tuyến trong phạm vi toàn tỉnh theo các chỉ tiêu về thời gian xử lý và tỷ lệ phiếu đúng hạn\n"
-        "2. Đánh giá, phân tích các tồn tại và thực hiện đôn đốc, điều hành các đơn vị xử lý phản ánh khách hàng, chất lượng chủ động, Cell chất lượng kém và sự cố trạm vô tuyến trong phạm vi toàn tỉnh\n"
-        "3. Tổng hợp, báo cáo định kỳ và đảm bảo tính chính xác về số liệu đánh giá công tác xử lý phản ánh khách hàng, chất lượng chủ động, Cell chất lượng kém và sự cố trạm vô tuyến trong phạm vi toàn tỉnh\n"
-        "4. Đề xuất điều chỉnh tính năng các công cụ chuyển đổi số hỗ trợ công tác đảm bảo, nâng cao chất lượng xử lý phản ánh khách hàng, chất lượng chủ động, Cell chất lượng kém và sự cố trạm vô tuyến\n"
-        "5. Quản lý và thực hiện điều phối vật tư xử lý phản ánh khách hàng, chất lượng chủ động, Cell chất lượng kém và sự cố trạm vô tuyến trong phạm vi toàn tỉnh khi cần\n"
-        "6. Tiếp nhận và xử lý yêu cầu từ đơn vị quản trị, giám sát, điều hành chất lượng dịch vụ mức toàn quốc"
-    )
-    update.message.reply_text(message, parse_mode='HTML')
+    keyword = "qtgsttp"
+    knowledge_data = get_knowledge_from_sheets()
+    if keyword in knowledge_data:
+        info = knowledge_data[keyword]
+        reply = (
+            f"📚 <b>{info['title']}</b>\n\n"
+            f"{info['content']}"
+        )
+    else:
+        reply = "❌ Không tìm thấy thông tin cho QTGS T/TP."
+    update.message.reply_text(reply, parse_mode='HTML')
 
 def htktm1(update, context):
-    message = (
-        "📋 <b>Chức năng nhiệm vụ của Hỗ trợ kỹ thuật mức 1</b>\n\n"
-        "<b>HỔ TRỢ KỸ THUẬT MỨC 1 CÓ 8 CHỨC NĂNG VÀ NHIỆM VỤ LÀ:</b>\n"
-        "1. Phân tích logfile đo kiểm, đề xuất phương án (CRs) điều chỉnh hiện trường để xử lý đảm bảo chất lượng dịch vụ, chất lượng vùng phủ sóng tại địa bàn, gửi đơn vị hỗ trợ kỹ thuật mức 2 phê duyệt\n"
-        "2. Cập nhật thông tin về CSHT nhà trạm, cột cao trên các hệ thống quản lý và đảm bảo độ chính xác thông số RF (độ cao, góc ngẩng, góc phương vị…) tại hiện trường\n"
-        "3. Chủ trì xử lý cell/site chất lượng kém\n"
-        "4. Tiếp nhận và hỗ trợ nhân viên kỹ thuật địa bàn xử lý sự cố: CSHT nhà trạm (nguồn điện, truyền dẫn,…). Phần cứng trạm vô tuyến\n"
-        "5. Thực hiện đo kiểm vùng phủ sóng phục vụ Tối ưu hóa và Nâng cao chất lượng vô tuyến theo kế hoạch\n"
-        "6. Khảo sát, đề xuất điều chỉnh vị trí tối ưu CSHT\n"
-        "7. Tháo dỡ, lắp đặt, di dời trạm riêng lẻ phạm vi nội tỉnh phục vụ tối ưu CSHT, xử lý, nâng cao chất lượng mạng, xử lý phản ánh khách hàng\n"
-        "8. Gửi yêu cầu tới các đơn vị hỗ trợ kỹ thuật mức cao hơn (cấu hình tham số hệ thống, cung cấp vật tư,…)"
-    )
-    update.message.reply_text(message, parse_mode='HTML')
+    keyword = "htktm1"
+    knowledge_data = get_knowledge_from_sheets()
+    if keyword in knowledge_data:
+        info = knowledge_data[keyword]
+        reply = (
+            f"📚 <b>{info['title']}</b>\n\n"
+            f"{info['content']}"
+        )
+    else:
+        reply = "❌ Không tìm thấy thông tin cho Hỗ trợ kỹ thuật mức 1."
+    update.message.reply_text(reply, parse_mode='HTML')
 
 def ktdb(update, context):
-    message = (
-        "📋 <b>Chức năng nhiệm vụ của Kỹ thuật địa bàn</b>\n\n"
-        "<b>Kỹ thuật địa bàn gồm có 10 chức năng và nhiệm vụ là:</b>\n"
-        "1. Đảm bảo hoạt động, chất lượng và xử lý sự cố nguồn điện\n"
-        "2. Đảm bảo hoạt động, chất lượng và xử lý sự cố truyền dẫn tại trạm\n"
-        "3. Đảm bảo hoạt động, chất lượng và xử lý sự cố các hạng mục CSHT khác (điều hoà, cảnh báo ngoài, điện chiếu sáng, tiếp đất, chống sét,…)\n"
-        "4. Theo dõi chất lượng và vùng phủ sóng của các trạm vô tuyến được giao\n"
-        "5. Đảm bảo các thông số RF tại hiện trường (độ cao, góc ngẩng, góc phương vị, trạng thái feeder, connector…) không sai lệch so với số liệu trên các hệ thống quản lý\n"
-        "6. Điều chỉnh các thông số tại hiện trường (độ cao, góc ngẩng, góc phương vị…) theo CRs đã được phê duyệt\n"
-        "7. Xử lý cảnh báo phần cứng tại trạm vô tuyến\n"
-        "8. Thực hiện bảo dưỡng trạm vô tuyến\n"
-        "9. Tiếp nhận thông tin về phản ánh khách hàng và kiểm tra, xác minh, xử lý tại hiện trường\n"
-        "10. Gửi yêu cầu tới đơn vị hỗ trợ kỹ thuật mức 1 nếu cần"
-    )
-    update.message.reply_text(message, parse_mode='HTML')
+    keyword = "ktdb"
+    knowledge_data = get_knowledge_from_sheets()
+    if keyword in knowledge_data:
+        info = knowledge_data[keyword]
+        reply = (
+            f"📚 <b>{info['title']}</b>\n\n"
+            f"{info['content']}"
+        )
+    else:
+        reply = "❌ Không tìm thấy thông tin cho Kỹ thuật địa bàn."
+    update.message.reply_text(reply, parse_mode='HTML')
 
 def handle_error_code(update, context):
     user_input = update.message.text.strip().lstrip('/')
@@ -197,11 +244,10 @@ def unknown_command(update, context):
             "⚠️ Lệnh không hợp lệ hoặc mã lỗi không tồn tại.\n"
             "Dùng /help để xem hướng dẫn hoặc /list để xem danh sách mã lỗi hỗ trợ."
         )
-    # Không trả lời nếu không có /
 
 # Hàm ping để giữ bot awake
 def keep_alive():
-    ping_url = f"{RENDER_EXTERNAL_URL}/"
+    ping_url = RENDER_EXTERNAL_URL
     while True:
         try:
             logger.info(f"Pinging {ping_url} to keep bot alive")
@@ -215,12 +261,12 @@ def keep_alive():
 ping_thread = threading.Thread(target=keep_alive, daemon=True)
 ping_thread.start()
 
-# Thêm handler cho các lệnh mã lỗi tùy chỉnh
 dispatcher.add_handler(MessageHandler(Filters.regex(r'^/(\d+)$'), handle_error_code))
 dispatcher.add_handler(CommandHandler("start", start))
 dispatcher.add_handler(CommandHandler("help", help_command))
 dispatcher.add_handler(CommandHandler("list", list_command))
 dispatcher.add_handler(CommandHandler("refresh", refresh_cache))
+dispatcher.add_handler(CommandHandler("knowledge", knowledge_command))
 dispatcher.add_handler(CommandHandler("qtgsttp", qtgsttp))
 dispatcher.add_handler(CommandHandler("htktm1", htktm1))
 dispatcher.add_handler(CommandHandler("ktdb", ktdb))
